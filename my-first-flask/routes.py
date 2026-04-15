@@ -1,114 +1,90 @@
-import uuid
-
-from flask import Blueprint, jsonify, request
-from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
-
+from flask import request, jsonify, Blueprint
+from werkzeug.exceptions import NotFound, BadRequest, Conflict, UnprocessableEntity
 from models import tasks
+import uuid
 
 
 tasks_bp = Blueprint("tasks", __name__)
 
 
-def _find_task(task_id):
-    for task in tasks:
-        if task["id"] == task_id:
-            return task
-    raise NotFound(f"Task '{task_id}' was not found.")
-
-
-def _require_json_body():
-    data = request.get_json(silent=True)
-    if data is None:
-        raise BadRequest("Request body must be valid JSON.")
-    if not isinstance(data, dict):
-        raise BadRequest("Request body must be a JSON object.")
-    return data
-
-
-def _validate_title(value):
-    if not isinstance(value, str):
-        raise BadRequest("title must be a string.")
-    cleaned_title = value.strip()
-    if not cleaned_title:
-        raise UnprocessableEntity("title must contain text.")
-    return cleaned_title
-
-
-def _validate_completed(value):
-    if not isinstance(value, bool):
-        raise BadRequest("completed must be a boolean.")
-    return value
-
-
 @tasks_bp.route("/tasks", methods=["GET"])
 def get_tasks():
-    return jsonify({
-        "success": True,
-        "data": tasks,
-    })
+    # Return every task currently stored in memory.
+    return tasks
 
 
 @tasks_bp.route("/tasks/<task_id>", methods=["GET"])
 def get_task(task_id):
-    task = _find_task(task_id)
-    return jsonify({
-        "success": True,
-        "data": task,
-    })
+    # Look up a single task and fail with 404 if it does not exist.
+    for task in tasks:
+        if task_id == task["id"]:
+             return task
+    raise NotFound(f"{task_id} not found")
 
 
 @tasks_bp.route("/tasks", methods=["POST"])
 def create_task():
-    data = _require_json_body()
-
+    # `silent=True` lets us raise our own JSON-friendly validation error.
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        raise BadRequest("request body must be json")
     if "title" not in data:
-        raise BadRequest("title is required.")
+        raise BadRequest("title is required")
+    title = data["title"]
+    if not isinstance(title, str):
+        raise BadRequest("title must be a string")
+    if not title.strip():
+        raise UnprocessableEntity("title must contain text")
 
+    # New tasks get a generated id and start as incomplete.
     new_task = {
-        "id": str(uuid.uuid4()),
-        "title": _validate_title(data["title"]),
-        "completed": False,
-    }
-
+    "id": str(uuid.uuid4()),
+    "title": title.strip(),
+    "completed": False
+        }
     tasks.append(new_task)
     return jsonify({
         "success": True,
-        "data": new_task,
+        "data": new_task
     }), 201
 
 
 @tasks_bp.route("/tasks/<task_id>", methods=["PUT"])
 def change_task(task_id):
-    data = _require_json_body()
-    if not data:
-        raise BadRequest("Update request must include at least one field.")
-
-    allowed_fields = {"title", "completed"}
-    invalid_fields = sorted(set(data) - allowed_fields)
-    if invalid_fields:
-        raise BadRequest(
-            f"Unsupported field(s): {', '.join(invalid_fields)}."
-        )
-
-    task = _find_task(task_id)
-
-    if "title" in data:
-        task["title"] = _validate_title(data["title"])
-    if "completed" in data:
-        task["completed"] = _validate_completed(data["completed"])
-
-    return jsonify({
-        "success": True,
-        "data": task,
-    })
+    # Updates accept only the fields this simple API knows how to change.
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        raise BadRequest("error: update request must contain data")
+    keys = ("title", "completed")
+    data_keys = data.keys()
+    for key in data_keys:
+        if key not in keys:
+            raise BadRequest(f"not allowed to pass {key}")
+    for task in tasks:
+            if task_id == task["id"]:
+                if "title" in data:
+                    if not isinstance(data["title"], str):
+                        raise BadRequest("title must be a string")
+                    if not data["title"].strip():
+                        raise UnprocessableEntity("title must contain text")
+                    # Trim whitespace so stored titles stay clean.
+                    task["title"] = data["title"].strip()
+                if "completed" in data:
+                    if not isinstance(data["completed"], bool):
+                        raise BadRequest("completed must be a boolean")
+                    task["completed"] = data["completed"]
+                return task
+    raise NotFound(f"{task_id} not found")
 
 
 @tasks_bp.route("/tasks/<task_id>", methods=["DELETE"])
 def delete_task(task_id):
-    task = _find_task(task_id)
-    tasks.remove(task)
+    # Delete the matching task and confirm which one was removed.
+    for task in tasks:
+        if task["id"] == task_id:
+            tasks.remove(task)
 
-    return jsonify({
-        "success": True,
-        "message": f"Removed task '{task['title']}'.",
-    })
+            return {
+                "Message": f"removed task {task['title']}"
+            }
+    raise NotFound(f"{task_id} not found")
