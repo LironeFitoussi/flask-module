@@ -1,24 +1,21 @@
-from werkzeug.exceptions import NotFound, BadRequest, Conflict, UnprocessableEntity
-from flask import jsonify, Blueprint
+from flask import jsonify
+from werkzeug.exceptions import HTTPException
 
-errors_bp = Blueprint("errrors",__name__)
-# create errorhundle for not found errors
-@errors_bp.errorhandler(NotFound)
-def not_found(e):
-    return jsonify({
-        "ERROR": str(e)
-    }), 404
 
-# create errorhundle forBadrequest errors  
-@errors_bp.errorhandler(BadRequest)
-def bad_request(e):
-    return jsonify({
-        "ERROR": str(e)
-    }), 400
+def register_error_handlers(app):
+    @app.errorhandler(HTTPException)
+    def handle_http_error(error):
+        return jsonify({
+            "error": error.name,
+            "message": error.description,
+            "status": error.code,
+        }), error.code
 
-# create errorhundle forunprocessable entries errors
-@errors_bp.errorhandler(UnprocessableEntity)
-def empty_strings(e):
-    return jsonify({
-        "ERROR": str(e)
-    }), 422
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error):
+        app.logger.exception("Unhandled exception: %s", error)
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": "An unexpected error occurred.",
+            "status": 500,
+        }), 500
