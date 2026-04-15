@@ -1,21 +1,24 @@
-from flask import Blueprint, jsonify
-from werkzeug.exceptions import NotFound, BadRequest, UnprocessableEntity
+from werkzeug.exceptions import NotFound, BadRequest, Conflict, UnprocessableEntity
+from flask import jsonify, Blueprint
 
-errors_bp = Blueprint("errors", __name__)
-@errors_bp.app_errorhandler(NotFound)
-def handle_type_error(e):
+errors_bp = Blueprint("errrors",__name__)
+# create errorhundle for not found errors
+@errors_bp.errorhandler(NotFound)
+def not_found(e):
     return jsonify({
-        "error": str(e)
+        "ERROR": str(e)
     }), 404
 
-@errors_bp.app_errorhandler(BadRequest)
-def handle_type_error(e):
+# create errorhundle forBadrequest errors  
+@errors_bp.errorhandler(BadRequest)
+def bad_request(e):
     return jsonify({
-        "error": str(e)
+        "ERROR": str(e)
     }), 400
-    
-@errors_bp.app_errorhandler(UnprocessableEntity)
-def handle_type_error(e):
+
+# create errorhundle forunprocessable entries errors
+@errors_bp.errorhandler(UnprocessableEntity)
+def empty_strings(e):
     return jsonify({
-        "error": str(e)
+        "ERROR": str(e)
     }), 422
