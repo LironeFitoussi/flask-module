@@ -1,5 +1,10 @@
 from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-client = MongoClient("mongodb+srv://lironef_db_user:dGbUbRU8k7475lUC@cluster0.82afdwe.mongodb.net/prod?appName=Cluster0")
+mongo_uri = os.getenv("MONGO_URI")
+
+client = MongoClient(mongo_uri)
 db = client["prod"]
