@@ -1,8 +1,7 @@
 from flask import request, jsonify, Blueprint
 from werkzeug.exceptions import NotFound, BadRequest, Conflict, UnprocessableEntity
 from models import tasks
-import uuid
-
+from db import db
 
 tasks_bp = Blueprint("tasks", __name__)
 
@@ -38,11 +37,21 @@ def create_task():
 
     # New tasks get a generated id and start as incomplete.
     new_task = {
-    "id": str(uuid.uuid4()),
-    "title": title.strip(),
-    "completed": False
-        }
-    tasks.append(new_task)
+        "title": title.strip(),
+        "completed": False  
+    }
+    
+    db.todo.insert_one(new_task)
+    
+    """_summary_
+    {
+        _id: ObjectId("69e0c9f9e3d4fc8a309c49ac"),
+        "title": title.strip(),
+        "completed": False  
+    }
+    """
+    
+    new_task["_id"] = str(new_task["_id"])
     return jsonify({
         "success": True,
         "data": new_task
