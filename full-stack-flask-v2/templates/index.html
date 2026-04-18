@@ -7,34 +7,70 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>Todo List</h1>
+  <div class="layout">
+    <!-- Sidebar: Lists -->
+    <aside class="sidebar">
+      <h2>My Lists</h2>
 
-    <form id="add-form">
-      <input
-        type="text"
-        id="new-title"
-        placeholder="What needs to be done?"
-        autocomplete="off"
-        required
-      />
-      <button type="submit">Add</button>
-    </form>
+      <form id="add-list-form">
+        <input type="text" id="new-list-name" placeholder="New list name..." autocomplete="off" required />
+        <button type="submit">+</button>
+      </form>
 
-    <ul id="task-list"></ul>
+      <ul id="list-nav"></ul>
+      <p id="no-lists-msg" class="empty-msg hidden">No lists yet.</p>
+    </aside>
 
-    <p id="empty-msg" class="empty-msg hidden">No tasks yet. Add one above!</p>
-    <p id="error-msg" class="error-msg hidden"></p>
+    <!-- Main: Tasks for selected list -->
+    <main class="main-panel">
+      <div id="no-list-selected" class="placeholder-msg">
+        <span>&#8592; Select a list to get started</span>
+      </div>
+
+      <div id="task-panel" class="hidden">
+        <div class="panel-header">
+          <h1 id="active-list-name"></h1>
+          <button id="btn-delete-list" class="btn-danger" title="Delete list">Delete List</button>
+        </div>
+
+        <form id="add-task-form">
+          <input type="text" id="new-task-title" placeholder="What needs to be done?" autocomplete="off" required />
+          <button type="submit">Add</button>
+        </form>
+
+        <ul id="task-list"></ul>
+        <p id="empty-tasks-msg" class="empty-msg hidden">No tasks yet. Add one above!</p>
+      </div>
+
+      <p id="error-msg" class="error-msg hidden"></p>
+    </main>
   </div>
 
   <script>
-    const API = "/tasks";
+    const LISTS_API = "/lists";
+    const TASKS_API = (listId) => `/lists/${listId}/tasks`;
+    const TASK_API  = (taskId) => `/tasks/${taskId}`;
 
-    const taskList  = document.getElementById("task-list");
-    const emptyMsg  = document.getElementById("empty-msg");
-    const errorMsg  = document.getElementById("error-msg");
-    const addForm   = document.getElementById("add-form");
-    const newTitle  = document.getElementById("new-title");
+    let activeListId   = null;
+    let activeListName = null;
+
+    const listNav        = document.getElementById("list-nav");
+    const noListsMsg     = document.getElementById("no-lists-msg");
+    const noListSelected = document.getElementById("no-list-selected");
+    const taskPanel      = document.getElementById("task-panel");
+    const activeListNameEl = document.getElementById("active-list-name");
+    const btnDeleteList  = document.getElementById("btn-delete-list");
+    const addListForm    = document.getElementById("add-list-form");
+    const newListName    = document.getElementById("new-list-name");
+    const addTaskForm    = document.getElementById("add-task-form");
+    const newTaskTitle   = document.getElementById("new-task-title");
+    const taskList       = document.getElementById("task-list");
+    const emptyTasksMsg  = document.getElementById("empty-tasks-msg");
+    const errorMsg       = document.getElementById("error-msg");
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
 
     function showError(msg) {
       errorMsg.textContent = msg;
@@ -42,9 +78,109 @@
       setTimeout(() => errorMsg.classList.add("hidden"), 4000);
     }
 
+    // ── Lists ──────────────────────────────────────────────────────────────
+
+    async function loadLists() {
+      try {
+        const res  = await fetch(LISTS_API);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to load lists");
+        renderLists(data);
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
+    function renderLists(lists) {
+      listNav.innerHTML = "";
+      noListsMsg.classList.toggle("hidden", lists.length > 0);
+
+      lists.forEach(lst => {
+        const li = document.createElement("li");
+        li.className = "list-item" + (lst.id === activeListId ? " active" : "");
+        li.dataset.id = lst.id;
+
+        li.innerHTML = `<span class="list-name">${escapeHtml(lst.name)}</span>`;
+        li.addEventListener("click", () => selectList(lst.id, lst.name));
+        listNav.appendChild(li);
+      });
+
+      // If active list was deleted, clear panel
+      if (activeListId && !lists.find(l => l.id === activeListId)) {
+        activeListId = null;
+        showTaskPanel(false);
+      }
+    }
+
+    function selectList(id, name) {
+      activeListId   = id;
+      activeListName = name;
+      showTaskPanel(true);
+      activeListNameEl.textContent = name;
+      loadTasks();
+      // Re-render sidebar to highlight active
+      document.querySelectorAll(".list-item").forEach(el => {
+        el.classList.toggle("active", el.dataset.id === id);
+      });
+    }
+
+    function showTaskPanel(show) {
+      noListSelected.classList.toggle("hidden", show);
+      taskPanel.classList.toggle("hidden", !show);
+    }
+
+    addListForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const name = newListName.value.trim();
+      if (!name) return;
+      try {
+        const res  = await fetch(LISTS_API, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({name}),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to create list");
+        newListName.value = "";
+        await loadLists();
+        selectList(data.data.id, data.data.name);
+      } catch (e) {
+        showError(e.message);
+      }
+    });
+
+    btnDeleteList.addEventListener("click", async () => {
+      if (!activeListId) return;
+      if (!confirm(`Delete list "${activeListName}" and all its tasks?`)) return;
+      try {
+        const res  = await fetch(`${LISTS_API}/${activeListId}`, {method: "DELETE"});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to delete list");
+        activeListId = null;
+        showTaskPanel(false);
+        loadLists();
+      } catch (e) {
+        showError(e.message);
+      }
+    });
+
+    // ── Tasks ──────────────────────────────────────────────────────────────
+
+    async function loadTasks() {
+      if (!activeListId) return;
+      try {
+        const res  = await fetch(TASKS_API(activeListId));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to load tasks");
+        renderTasks(data);
+      } catch (e) {
+        showError(e.message);
+      }
+    }
+
     function renderTasks(tasks) {
       taskList.innerHTML = "";
-      emptyMsg.classList.toggle("hidden", tasks.length > 0);
+      emptyTasksMsg.classList.toggle("hidden", tasks.length > 0);
 
       tasks.forEach(task => {
         const li = document.createElement("li");
@@ -62,74 +198,52 @@
           </div>
         `;
 
-        // Toggle completed
-        li.querySelector(".toggle-cb").addEventListener("change", () => toggleTask(task.id, !task.completed));
-
-        // Delete
-        li.querySelector(".btn-delete").addEventListener("click", () => deleteTask(task.id));
-
-        // Edit
-        li.querySelector(".btn-edit").addEventListener("click", () => startEdit(li, task));
+        li.querySelector(".toggle-cb").addEventListener("change", () =>
+          toggleTask(task.id, !task.completed));
+        li.querySelector(".btn-delete").addEventListener("click", () =>
+          deleteTask(task.id));
+        li.querySelector(".btn-edit").addEventListener("click", () =>
+          startEdit(li, task));
 
         taskList.appendChild(li);
       });
     }
 
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, c => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[c]));
-    }
-
-    async function loadTasks() {
+    async function toggleTask(id, completed) {
       try {
-        const res  = await fetch(API);
+        const res  = await fetch(TASK_API(id), {
+          method: "PUT",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({completed}),
+        });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to load tasks");
-        renderTasks(data);
+        if (!res.ok) throw new Error(data.ERROR || "Failed to update task");
+        loadTasks();
       } catch (e) {
         showError(e.message);
       }
     }
 
-    async function createTask(title) {
-      const res  = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create task");
-      return data.data;
-    }
-
-    async function toggleTask(id, completed) {
-      const res  = await fetch(`${API}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update task");
-      loadTasks();
-    }
-
     async function deleteTask(id) {
-      const res  = await fetch(`${API}/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete task");
-      loadTasks();
+      try {
+        const res  = await fetch(TASK_API(id), {method: "DELETE"});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to delete task");
+        loadTasks();
+      } catch (e) {
+        showError(e.message);
+      }
     }
 
-    async function saveEdit(id, newTitleValue, li) {
+    async function saveEdit(id, newTitleValue) {
       try {
-        const res  = await fetch(`${API}/${id}`, {
+        const res  = await fetch(TASK_API(id), {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: newTitleValue }),
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({title: newTitleValue}),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to update task");
+        if (!res.ok) throw new Error(data.ERROR || "Failed to update task");
         loadTasks();
       } catch (e) {
         showError(e.message);
@@ -137,12 +251,12 @@
     }
 
     function startEdit(li, task) {
-      const label = li.querySelector(".checkbox-label");
+      const label    = li.querySelector(".checkbox-label");
       const titleSpan = li.querySelector(".title-text");
-      const editBtn = li.querySelector(".btn-edit");
+      const editBtn  = li.querySelector(".btn-edit");
 
       const input = document.createElement("input");
-      input.type = "text";
+      input.type  = "text";
       input.className = "edit-input";
       input.value = task.title;
 
@@ -152,11 +266,8 @@
 
       const finish = () => {
         const val = input.value.trim();
-        if (val && val !== task.title) {
-          saveEdit(task.id, val, li);
-        } else {
-          loadTasks(); // revert
-        }
+        if (val && val !== task.title) saveEdit(task.id, val);
+        else loadTasks();
       };
 
       editBtn.onclick = finish;
@@ -166,20 +277,27 @@
       });
     }
 
-    addForm.addEventListener("submit", async e => {
+    addTaskForm.addEventListener("submit", async e => {
       e.preventDefault();
-      const title = newTitle.value.trim();
-      if (!title) return;
+      const title = newTaskTitle.value.trim();
+      if (!title || !activeListId) return;
       try {
-        await createTask(title);
-        newTitle.value = "";
+        const res  = await fetch(TASKS_API(activeListId), {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({title}),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.ERROR || "Failed to create task");
+        newTaskTitle.value = "";
         loadTasks();
       } catch (e) {
         showError(e.message);
       }
     });
 
-    loadTasks();
+    // ── Init ───────────────────────────────────────────────────────────────
+    loadLists();
   </script>
 </body>
 </html>

@@ -9,37 +9,173 @@ body {
   background: #f0f2f5;
   min-height: 100vh;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 48px 16px;
+  align-items: stretch;
 }
 
-.container {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+/* ── Layout ──────────────────────────────────────────────────────────── */
+
+.layout {
+  display: flex;
   width: 100%;
-  max-width: 520px;
-  padding: 36px 32px;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 260px;
+  min-width: 200px;
+  background: #1a1a2e;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 20px 24px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.sidebar h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+#add-list-form {
+  display: flex;
+  gap: 8px;
+}
+
+#add-list-form input[type="text"] {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid #334155;
+  border-radius: 7px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#add-list-form input[type="text"]:focus {
+  border-color: #6366f1;
+}
+
+#add-list-form button {
+  width: 34px;
+  height: 34px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+#add-list-form button:hover {
+  background: #4f46e5;
+}
+
+#list-nav {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.list-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.list-item:hover {
+  background: #1e293b;
+}
+
+.list-item.active {
+  background: #6366f1;
+  color: #fff;
+  font-weight: 600;
+}
+
+.list-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* ── Main panel ──────────────────────────────────────────────────────── */
+
+.main-panel {
+  flex: 1;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  position: relative;
+}
+
+.placeholder-msg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+/* Panel header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
 }
 
 h1 {
   font-size: 1.8rem;
   font-weight: 700;
   color: #1a1a2e;
-  margin-bottom: 28px;
-  text-align: center;
   letter-spacing: -0.5px;
 }
 
-/* Add form */
-#add-form {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 28px;
+.btn-danger {
+  padding: 7px 14px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-#add-form input[type="text"] {
+.btn-danger:hover {
+  background: #fecaca;
+}
+
+/* ── Add task form ────────────────────────────────────────────────────── */
+
+#add-task-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+#add-task-form input[type="text"] {
   flex: 1;
   padding: 10px 14px;
   border: 2px solid #e2e8f0;
@@ -49,11 +185,11 @@ h1 {
   transition: border-color 0.2s;
 }
 
-#add-form input[type="text"]:focus {
+#add-task-form input[type="text"]:focus {
   border-color: #6366f1;
 }
 
-#add-form button {
+#add-task-form button {
   padding: 10px 20px;
   background: #6366f1;
   color: #fff;
@@ -65,11 +201,12 @@ h1 {
   transition: background 0.2s;
 }
 
-#add-form button:hover {
+#add-task-form button:hover {
   background: #4f46e5;
 }
 
-/* Task list */
+/* ── Task list ────────────────────────────────────────────────────────── */
+
 #task-list {
   list-style: none;
   display: flex;
@@ -97,7 +234,6 @@ h1 {
   color: #94a3b8;
 }
 
-/* Checkbox + title */
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -120,7 +256,6 @@ h1 {
   word-break: break-word;
 }
 
-/* Inline edit input */
 .edit-input {
   flex: 1;
   padding: 4px 8px;
@@ -130,7 +265,6 @@ h1 {
   outline: none;
 }
 
-/* Action buttons */
 .actions {
   display: flex;
   gap: 6px;
@@ -169,7 +303,8 @@ h1 {
   background: #fecaca;
 }
 
-/* Messages */
+/* ── Messages ─────────────────────────────────────────────────────────── */
+
 .hidden { display: none; }
 
 .empty-msg {
@@ -180,11 +315,24 @@ h1 {
 }
 
 .error-msg {
-  text-align: center;
-  color: #dc2626;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   background: #fee2e2;
+  color: #dc2626;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 10px 20px;
   font-size: 0.9rem;
-  margin-top: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; min-width: unset; flex-direction: column; padding: 20px 16px; }
+  #list-nav { flex-direction: row; flex-wrap: wrap; overflow-y: unset; }
+  .main-panel { padding: 24px 16px; }
 }

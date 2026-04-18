@@ -1,13 +1,15 @@
 from flask import Flask, render_template
 
-from db import init_db
-from errors import errors_bp
-from routes import tasks_bp
+from config.db import init_db
+from config.errors import errors_bp
+from routes.lists import lists_bp
+from routes.tasks import tasks_bp
 
 app = Flask(__name__)
 
 init_db(app)
 
+app.register_blueprint(lists_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(errors_bp)
 

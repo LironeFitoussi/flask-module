@@ -1,28 +1,23 @@
-from copy import deepcopy
 from pathlib import Path
 import sys
 
 import pytest
 
-
-APP_DIR = Path(__file__).resolve().parents[1] 
+APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from app import app  # noqa: E402
-from models import tasks  # noqa: E402
-
-
-INITIAL_TASKS = deepcopy(tasks)
+from db import get_collection  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def reset_tasks():
-    tasks.clear()
-    tasks.extend(deepcopy(INITIAL_TASKS))
+def clean_db():
+    get_collection("tasks").delete_many({})
+    get_collection("lists").delete_many({})
     yield
-    tasks.clear()
-    tasks.extend(deepcopy(INITIAL_TASKS))
+    get_collection("tasks").delete_many({})
+    get_collection("lists").delete_many({})
 
 
 @pytest.fixture
