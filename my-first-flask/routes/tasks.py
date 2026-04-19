@@ -72,7 +72,8 @@ def change_task(task_id):
         update["completed"] = data["completed"]
 
     try:
-        task = db.todo.find_one_and_update(
+        col = get_collection("todo")
+        task = col.find_one_and_update(
             {"_id": ObjectId(task_id)},
             {"$set": update},
             return_document=True
@@ -87,7 +88,8 @@ def change_task(task_id):
 @tasks_bp.route("/tasks/<task_id>", methods=["DELETE"])
 def delete_task(task_id):
     try:
-        task = db.todo.find_one_and_delete({"_id": ObjectId(task_id)})
+        col = get_collection("todo")
+        task = col.find_one_and_delete({"_id": ObjectId(task_id)})
     except InvalidId:
         raise BadRequest("invalid task id")
     if not task:
